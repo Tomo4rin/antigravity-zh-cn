@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent
 DICT_PATH = ROOT / "dict.json"
 INJECT_PATH = ROOT / "inject.js"
 MISSING_PATH = ROOT / "missing-terms.json"
-INJECT_VERSION = "0.7.0"
+INJECT_VERSION = "0.8.0"
 
 
 def load_dictionary():
