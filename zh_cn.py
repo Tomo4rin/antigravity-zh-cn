@@ -37,8 +37,21 @@ def load_inject_script():
 
 
 def find_antigravity_listen_ports():
-    """在 Windows 上查找 Antigravity 进程监听的 127.0.0.1 端口。"""
+    """在 Windows 上优先从 DevToolsActivePort 读取调试端口，再用 tasklist + netstat 兜底。"""
     ports = []
+    try:
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            active_port_file = Path(appdata) / "Antigravity" / "DevToolsActivePort"
+            if active_port_file.is_file():
+                first_line = active_port_file.read_text(encoding="utf-8", errors="ignore").splitlines()[0].strip()
+                if first_line.isdigit():
+                    p = int(first_line)
+                    if 0 < p <= 65535:
+                        ports.append(p)
+    except Exception:
+        pass
+
     try:
         pids_raw = subprocess.check_output(
             ["tasklist", "/FI", "IMAGENAME eq Antigravity.exe", "/FO", "CSV", "/NH"],
@@ -52,7 +65,7 @@ def find_antigravity_listen_ports():
             if len(parts) >= 2 and parts[1].isdigit():
                 pids.add(parts[1])
         if not pids:
-            return []
+            return ports
 
         net_raw = subprocess.check_output(
             ["netstat", "-ano", "-p", "TCP"],
@@ -62,7 +75,7 @@ def find_antigravity_listen_ports():
         )
         for line in net_raw.splitlines():
             cols = line.split()
-            if len(cols) >= 5 and cols[0] == "TCP" and cols[3] == "LISTENING":
+            if len(cols) >= 5 and cols[0].upper() == "TCP" and cols[3].upper() in ("LISTENING", "LISTEN", "侦听", "监听"):
                 addr, pid = cols[1], cols[4]
                 if pid in pids and addr.startswith("127.0.0.1:"):
                     port_str = addr.rsplit(":", 1)[-1]
