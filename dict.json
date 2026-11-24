@@ -1,7 +1,7 @@
 {
   "_meta": {
     "description": "Antigravity 2.0 UI 精确中英词典（仅匹配短 UI 控件文本，不匹配长段落与代码）",
-    "version": "0.8.0"
+    "version": "0.8.1"
   },
   "exact": {
     "New Conversation": "新对话",
@@ -950,13 +950,13 @@
     "Hide breakdown": "收起明细",
     "High": "高",
     "Layout Controls": "布局控制",
-    "Leaving Soon": "即将退出",
+    "Leaving Soon": "即将下线",
     "Loading Hosts…": "正在加载主机…",
     "Loading...": "加载中...",
     "Local Checkout": "本地检出",
     "Mark Unread": "标为未读",
     "Medium": "中",
-    "New": "新建",
+    "New": "新",
     "No Project": "无项目",
     "Notice": "提示",
     "Pin": "置顶",
@@ -974,6 +974,10 @@
     "Summarize a spreadsheet": "汇总电子表格",
     "System default": "系统默认",
     "View Usage": "查看用量",
-    "Worktrees are available for Git repositories": "Git 仓库支持工作树 (Worktree)"
+    "Worktrees are available for Git repositories": "Git 仓库支持工作树 (Worktree)",
+    "Thinking effort": "思考强度",
+    "Low": "低",
+    "Extra High": "超高",
+    "Minimal": "极低"
   }
 }

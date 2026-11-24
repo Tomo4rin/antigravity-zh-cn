@@ -2,6 +2,6 @@
   "name": "antigravity-zh-cn",
   "display_name": "Antigravity 简体中文汉化",
   "description": "无侵入动态汉化插件：Sidecar 常驻自动汉化 UI 界面、支持词典热更新与未翻译词条自动收集（不修改客户端文件）。",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "logo": "assets/logo.svg"
 }
