@@ -36,17 +36,27 @@
   ];
 
   const state = (window.__agZhCn = window.__agZhCn || {
-    version: "0.8.0",
+    version: "0.8.1",
     dict: {},
     originals: new WeakMap(),
+    applied: new WeakMap(),
     attrOriginals: new WeakMap(),
+    attrApplied: new WeakMap(),
     missingQueue: new Set(),
+    pendingTextNodes: new Set(),
+    pendingAttrEls: new Set(),
+    pendingRoots: new Set(),
     observer: null,
     scheduled: false,
     enabled: false
   });
-  state.version = "0.8.0";
+  state.version = "0.8.1";
+  if (!state.applied) state.applied = new WeakMap();
+  if (!state.attrApplied) state.attrApplied = new WeakMap();
   if (!state.missingQueue) state.missingQueue = new Set();
+  if (!state.pendingTextNodes) state.pendingTextNodes = new Set();
+  if (!state.pendingAttrEls) state.pendingAttrEls = new Set();
+  if (!state.pendingRoots) state.pendingRoots = new Set();
 
   function isProtected(el) {
     if (!el || el.nodeType !== 1) return false;
@@ -105,19 +115,26 @@
     const parent = node.parentElement;
     if (!parent || isProtected(parent)) return 0;
 
-    let orig = state.originals.get(node);
-    if (orig === undefined) {
-      orig = node.nodeValue;
+    const current = node.nodeValue;
+    const lastApplied = state.applied.get(node);
+    // 若当前文本与上次写入的译文不一致，说明宿主（React）已原地更新该节点，必须以新文本为原文
+    let orig;
+    if (lastApplied !== undefined && current === lastApplied && state.originals.has(node)) {
+      orig = state.originals.get(node);
+    } else {
+      orig = current;
+      state.originals.delete(node);
+      state.applied.delete(node);
     }
+
     const translated = lookup(orig, state.dict);
     if (!translated) {
       maybeCollectMissing(parent, orig);
       return 0;
     }
 
-    if (!state.originals.has(node)) {
-      state.originals.set(node, orig);
-    }
+    state.originals.set(node, orig);
+    state.applied.set(node, translated);
     if (node.nodeValue !== translated) {
       node.nodeValue = translated;
       return 1;
@@ -137,20 +154,31 @@
     }
 
     let count = 0;
-    let map = state.attrOriginals.get(el);
+    let origMap = state.attrOriginals.get(el);
+    let appliedMap = state.attrApplied.get(el);
     for (const attr of ATTR_NAMES) {
       if (!el.hasAttribute(attr)) continue;
       const current = el.getAttribute(attr);
-      const orig = map && attr in map ? map[attr] : current;
+      let orig;
+      if (appliedMap && attr in appliedMap && current === appliedMap[attr] && origMap && attr in origMap) {
+        orig = origMap[attr];
+      } else {
+        orig = current;
+        if (origMap) delete origMap[attr];
+        if (appliedMap) delete appliedMap[attr];
+      }
       const translated = lookup(orig, state.dict);
       if (!translated) continue;
-      if (!map) {
-        map = {};
-        state.attrOriginals.set(el, map);
+      if (!origMap) {
+        origMap = {};
+        state.attrOriginals.set(el, origMap);
       }
-      if (!(attr in map)) {
-        map[attr] = orig;
+      if (!appliedMap) {
+        appliedMap = {};
+        state.attrApplied.set(el, appliedMap);
       }
+      origMap[attr] = orig;
+      appliedMap[attr] = translated;
       if (current !== translated) {
         el.setAttribute(attr, translated);
         count += 1;
@@ -196,46 +224,79 @@
     while (cur) {
       if (cur.nodeType === 3 && state.originals.has(cur)) {
         const orig = state.originals.get(cur);
-        if (cur.nodeValue !== orig) {
-          cur.nodeValue = orig;
-          restored += 1;
-        }
-        state.originals.delete(cur);
-      } else if (cur.nodeType === 1 && state.attrOriginals.has(cur)) {
-        const map = state.attrOriginals.get(cur);
-        for (const [attr, orig] of Object.entries(map)) {
-          if (cur.getAttribute(attr) !== orig) {
-            cur.setAttribute(attr, orig);
+        const lastApplied = state.applied.get(cur);
+        if (lastApplied === undefined || cur.nodeValue === lastApplied) {
+          if (cur.nodeValue !== orig) {
+            cur.nodeValue = orig;
             restored += 1;
           }
         }
+        state.originals.delete(cur);
+        state.applied.delete(cur);
+      } else if (cur.nodeType === 1 && state.attrOriginals.has(cur)) {
+        const origMap = state.attrOriginals.get(cur);
+        const appliedMap = state.attrApplied.get(cur);
+        for (const [attr, orig] of Object.entries(origMap)) {
+          if (!appliedMap || !(attr in appliedMap) || cur.getAttribute(attr) === appliedMap[attr]) {
+            if (cur.getAttribute(attr) !== orig) {
+              cur.setAttribute(attr, orig);
+              restored += 1;
+            }
+          }
+        }
         state.attrOriginals.delete(cur);
+        state.attrApplied.delete(cur);
       }
       cur = walker.nextNode();
     }
     return restored;
   }
 
+  function flushPending() {
+    state.scheduled = false;
+    if (!state.enabled) {
+      state.pendingTextNodes.clear();
+      state.pendingAttrEls.clear();
+      state.pendingRoots.clear();
+      return;
+    }
+    const textNodes = Array.from(state.pendingTextNodes);
+    const attrEls = Array.from(state.pendingAttrEls);
+    const roots = Array.from(state.pendingRoots);
+    state.pendingTextNodes.clear();
+    state.pendingAttrEls.clear();
+    state.pendingRoots.clear();
+
+    for (const n of textNodes) {
+      if (n.isConnected) translateTextNode(n);
+    }
+    for (const el of attrEls) {
+      if (el.isConnected) translateElementAttrs(el);
+    }
+    for (const r of roots) {
+      if (r.isConnected) translateTree(r);
+    }
+  }
+
   function ensureObserver() {
     if (state.observer) return;
     state.observer = new MutationObserver((mutations) => {
-      if (!state.enabled || state.scheduled) return;
-      state.scheduled = true;
-      requestAnimationFrame(() => {
-        state.scheduled = false;
-        if (!state.enabled) return;
-        for (const m of mutations) {
-          if (m.type === "characterData") {
-            translateTextNode(m.target);
-          } else if (m.type === "attributes" && m.target) {
-            translateElementAttrs(m.target);
-          } else if (m.addedNodes && m.addedNodes.length) {
-            for (const n of m.addedNodes) {
-              translateTree(n);
-            }
+      if (!state.enabled) return;
+      for (const m of mutations) {
+        if (m.type === "characterData" && m.target) {
+          state.pendingTextNodes.add(m.target);
+        } else if (m.type === "attributes" && m.target) {
+          state.pendingAttrEls.add(m.target);
+        } else if (m.addedNodes && m.addedNodes.length) {
+          for (const n of m.addedNodes) {
+            state.pendingRoots.add(n);
           }
         }
-      });
+      }
+      if (!state.scheduled) {
+        state.scheduled = true;
+        requestAnimationFrame(flushPending);
+      }
     });
     state.observer.observe(document.body || document.documentElement, {
       childList: true,
