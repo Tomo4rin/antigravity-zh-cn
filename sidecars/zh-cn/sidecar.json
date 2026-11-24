@@ -1,0 +1,12 @@
+{
+  "command": "python",
+  "args": [
+    "-B",
+    "../../zh_cn.py",
+    "--watch"
+  ],
+  "restart_policy": "always",
+  "display_name": "Antigravity 简体中文动态汉化",
+  "description": "后台常驻监听 Antigravity 调试端口并自动注入中文 UI 翻译，同时收集未翻译词条。",
+  "has_web_ui": false
+}

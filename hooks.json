@@ -1,0 +1,11 @@
+{
+  "zh-cn-port-check": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python -B zh_cn.py --check-port",
+        "timeout": 5
+      }
+    ]
+  }
+}
