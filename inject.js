@@ -17,8 +17,18 @@
   const MAX_TEXT_LEN = 300;
   const DYNAMIC_RULES = [
     [/^Worked for (.+)$/, "用时 $1"],
+    [/^Thinking for (.+)$/, "正在思考 $1"],
+    [/^Thought for (.+)$/, "已思考 $1"],
     [/^Turn (\d+) of (\d+)$/, "第 $1 / $2 轮"],
     [/^Load older messages, showing (\d+) of (\d+)$/, "加载更早消息（显示 $1 / $2）"],
+    [/^See (\d+) more$/, "展开其余 $1 项"],
+    [/^Show (\d+) breakdowns?$/, "显示 $1 项明细"],
+    [/^(\d+) tools?$/, "$1 个工具"],
+    [/^Reading (.+)$/, "正在读取 $1"],
+    [/^Running (.+)$/, "正在运行 $1"],
+    [/^Send feedback as (.+)$/, "以 $1 身份提交反馈"],
+    [/^Good to see you, ([^.]+)\. What's next\?$/, "你好，$1。接下来做什么？"],
+    [/^Hey ([^,]+), what should we build today\?$/, "嗨 $1，今天我们构建点什么？"],
     [/^Project: (.+)$/, "项目：$1"],
     [/^Your plan: (.+)$/, "当前方案：$1"],
     [/^You have used some of your weekly limit, it will fully refresh in (.+)$/, "你已使用部分每周额度，将在 $1 后完全重置"],
@@ -26,7 +36,7 @@
   ];
 
   const state = (window.__agZhCn = window.__agZhCn || {
-    version: "0.7.0",
+    version: "0.8.0",
     dict: {},
     originals: new WeakMap(),
     attrOriginals: new WeakMap(),
@@ -35,7 +45,7 @@
     scheduled: false,
     enabled: false
   });
-  state.version = "0.7.0";
+  state.version = "0.8.0";
   if (!state.missingQueue) state.missingQueue = new Set();
 
   function isProtected(el) {
@@ -82,6 +92,10 @@
     if (/[\u4e00-\u9fff]/.test(t)) return;
     if (!/[A-Za-z]{2,}/.test(t)) return;
     if (/^([a-zA-Z]:\\|\/|https?:\/\/|#|@|\d+([.,]\d+)?%?$)/.test(t)) return;
+    // 跳过常见文件名、扩展名、快捷键组合与邮箱，避免污染待翻译列表
+    if (/^[^\s]+\.(py|js|mjs|cjs|ts|tsx|json|md|svg|png|jpg|bak|jsonl|txt|yml|yaml)(#L\d+)?$/i.test(t)) return;
+    if (/^(Ctrl|Alt|Shift|Enter|Esc|Tab|Space)(\+[A-Za-z0-9]+)*$/i.test(t)) return;
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return;
     if (el && (el.matches(UI_CONTROL_SELECTOR) || el.closest(UI_CONTROL_SELECTOR))) {
       state.missingQueue.add(t);
     }
