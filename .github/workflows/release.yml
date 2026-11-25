@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Package clean plugin archive
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, zipfile
+          from pathlib import Path
+
+          root = Path(".")
+          tag = os.environ["GITHUB_REF_NAME"]
+          out_dir = Path("dist")
+          out_dir.mkdir(exist_ok=True)
+          out_zip = out_dir / f"antigravity-zh-cn-{tag}.zip"
+
+          skip_dirs = {".git", ".github", "__pycache__", "dist"}
+          skip_files = {"missing-terms.json", ".DS_Store", "Thumbs.db"}
+
+          with zipfile.ZipFile(out_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+              for f in sorted(root.rglob("*")):
+                  if not f.is_file():
+                      continue
+                  rel = f.relative_to(root)
+                  if any(p in skip_dirs for p in rel.parts) or rel.name in skip_files or f.suffix in (".pyc", ".pyo"):
+                      continue
+                  zf.write(f, rel.as_posix())
+          print(f"Packed {out_zip} ({out_zip.stat().st_size} bytes)")
+          PY
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ZIP_FILE="dist/antigravity-zh-cn-${TAG}.zip"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${ZIP_FILE}" --clobber
+          else
+            gh release create "${TAG}" "${ZIP_FILE}" --title "${TAG}" --generate-notes
+          fi
