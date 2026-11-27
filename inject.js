@@ -14,7 +14,7 @@
   ]);
 
   const ATTR_NAMES = ["placeholder", "title", "aria-label"];
-  const MAX_TEXT_LEN = 300;
+  const MAX_TEXT_LEN = 800;
   const DYNAMIC_RULES = [
     [/^Worked for (.+)$/, "用时 $1"],
     [/^Thinking for (.+)$/, "正在思考 $1"],

@@ -29,8 +29,8 @@
 - `sidecars/zh-cn/sidecar.json`：Sidecar 常驻服务声明
 - `hooks.json`：SessionStart 静默检测（仅当未检测到调试端口时提示用户）
 - `zh_cn.py`：Python 纯标准库主控脚本
-- `inject.js`：前端 DOM 翻译器与漏词增量收集器（内置 React 节点原地更新识别与 17 条动态规则，实时同步思考强度、计时、工具计数、Swarm 面板与权限弹窗）
-- `dict.json`：中英精确 UI 词典（1011 条）
+- `inject.js`：前端 DOM 翻译器与漏词增量收集器（内置 React 节点原地更新识别与 17 条动态规则，支持最高 800 字符的斜杠命令与技能说明精确匹配，实时同步思考强度、计时、工具计数、Swarm 面板与权限弹窗）
+- `dict.json`：中英精确 UI 词典（1045 条）
 - `skills/antigravity-zh-cn/SKILL.md`：配合 Agent 一键补全 `missing-terms.json` 的技能说明
 
 ## 常用命令行
